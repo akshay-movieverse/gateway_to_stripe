@@ -1,0 +1,18 @@
+{% load static %}
+
+{% load socialaccount %} 
+
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ user.username }}</h1>
+    <p>You are logged in with: {{ user.email }}</p>
+
+    <a href="{% url 'account_logout' %}">Logout- not working yet</a>
+    <a href="{% url 'subscription' %}">Subscribe to a Plan</a>
+</body>
+</html>

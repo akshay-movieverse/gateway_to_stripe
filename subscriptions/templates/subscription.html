@@ -1,0 +1,10 @@
+{% comment %} {% extends "base.html" %} {% endcomment %}
+{% block content %}
+  <h2>Subscribe to a Plan</h2>
+  
+  <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
+  <stripe-pricing-table
+    pricing-table-id="prctbl_1RS9SQSEv1tl6ISPJzvVY7PW"
+    publishable-key="{{ STRIPE_PUBLIC_KEY }}">
+  </stripe-pricing-table>
+{% endblock %}

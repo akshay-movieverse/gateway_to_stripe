@@ -1,0 +1,5 @@
+bulbasaur/
+.env
+vegeta/
+__pycache__/
+staticfiles/
