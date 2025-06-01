@@ -83,7 +83,7 @@ def create_checkout_session(request):
             user_sub.save()
 
             messages.success(request, "Your plan has been updated successfully.")
-            return redirect('success')  # Optional: change destination
+            return redirect('subscription-success')  # Optional: change destination
     except UserSubscription.DoesNotExist:
         pass  # No subscription exists yet; continue below
 
