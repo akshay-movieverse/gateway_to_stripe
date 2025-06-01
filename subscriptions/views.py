@@ -96,8 +96,8 @@ def create_checkout_session(request):
             'quantity': 1,
         }],
         mode='subscription',
-        success_url=request.build_absolute_uri('/success/?session_id={CHECKOUT_SESSION_ID}'),
-        cancel_url=request.build_absolute_uri('/cancel/'),
+        success_url='https://stripe.countnine.com/success/?session_id={CHECKOUT_SESSION_ID}',
+        cancel_url=request.build_absolute_uri('/cancel/') + '?session_id={CHECKOUT_SESSION_ID}',
         metadata={"user_id": request.user.id}
     )
     return redirect(checkout_session.url)
@@ -140,7 +140,7 @@ def stripe_webhook(request):
                 'stripe_customer_id': session["customer"],
                 'stripe_subscription_id': session["subscription"],
                 'plan': subscription["items"]["data"][0]["price"]["id"],
-                'current_period_end': datetime.fromtimestamp(subscription["current_period_end"]),
+                'current_period_end': datetime.today(),
                 'is_active': True  # ✅ set active
             }
         )
