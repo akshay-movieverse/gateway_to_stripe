@@ -158,7 +158,7 @@ def stripe_webhook(request):
         try:
             user_sub = UserSubscription.objects.get(stripe_subscription_id=sub_data['id'])
             user_sub.plan = sub_data['items']['data'][0]['price']['id']
-            user_sub.current_period_end = datetime.fromtimestamp(sub_data['current_period_end'])
+            user_sub.current_period_end = datetime.today()#datetime.fromtimestamp(sub_data['current_period_end'])
             user_sub.is_active = sub_data['status'] == 'active'  # ✅ update is_active accordingly
             user_sub.save()
         except UserSubscription.DoesNotExist:
