@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Stripe Subscription{% endblock %}</title>
+</head>
+<body>
+    <div>
+        {% if messages %}
+  <ul>
+    {% for message in messages %}
+      <li>{{ message }}</li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

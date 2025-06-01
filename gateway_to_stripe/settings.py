@@ -62,7 +62,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
                     # Add the account middleware:
     "allauth.account.middleware.AccountMiddleware",
-    'middleware.subscription_required.SubscriptionRequiredMiddleware',
+
 ]
 
 ROOT_URLCONF = 'gateway_to_stripe.urls'
