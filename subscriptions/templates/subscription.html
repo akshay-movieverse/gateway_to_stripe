@@ -18,6 +18,11 @@
   {% comment %} $5 Plan {% endcomment %}
   {% if current_plan == 'price_1RS9OPSEv1tl6ISPdv59qBYR' %}
     <p><strong>$5/month</strong> — Current Plan</p>
+        <form action="{% url 'create-checkout-session' %}" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="price_id" value="price_1RS9OPSEv1tl6ISPdv59qBYR">
+          <button type="submit">Subscribe: $5/month</button>
+        </form>
   {% else %}
     <form action="{% url 'create-checkout-session' %}" method="post">
       {% csrf_token %}
@@ -29,6 +34,12 @@
   {% comment %} $10 Plan {% endcomment %}
   {% if current_plan == 'price_1RS9PpSEv1tl6ISPgkliHHER' %}
     <p><strong>$10/month</strong> — Current Plan</p>
+
+        <form action="{% url 'create-checkout-session' %}" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="price_id" value="price_1RS9PpSEv1tl6ISPgkliHHER">
+          <button type="submit">Subscribe: $10/month</button>
+        </form>
   {% else %}
     <form action="{% url 'create-checkout-session' %}" method="post">
       {% csrf_token %}
@@ -40,6 +51,11 @@
   {% comment %} $20 Plan {% endcomment %}
   {% if current_plan == 'price_1RS9Q6SEv1tl6ISP6u6RFTWx' %}
     <p><strong>$20/month</strong> — Current Plan</p>
+        <form action="{% url 'create-checkout-session' %}" method="post">
+          {% csrf_token %}
+          <input type="hidden" name="price_id" value="price_1RS9Q6SEv1tl6ISP6u6RFTWx">
+          <button type="submit">Subscribe: $20/month</button>
+        </form>
   {% else %}
     <form action="{% url 'create-checkout-session' %}" method="post">
       {% csrf_token %}

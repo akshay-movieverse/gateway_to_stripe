@@ -64,17 +64,16 @@ def create_checkout_session(request):
     try:
         user_sub = UserSubscription.objects.get(user=user)
         if user_sub.is_active:
-            if user_sub.plan == price_id:
-                messages.info(request, "You're already subscribed to this plan.")
-                return redirect('subscription')
-
+            subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
+            item_id = subscription["items"]["data"][0]["id"]
             # ✅ Change the plan on the existing Stripe subscription
             stripe.Subscription.modify(
                 user_sub.stripe_subscription_id,
                 cancel_at_period_end=False,
-                proration_behavior='create_prorations',
+                proration_behavior='none',
+                billing_cycle_anchor='now',
                 items=[{
-                    'id': stripe.Subscription.retrieve(user_sub.stripe_subscription_id)["items"]["data"][0].id,
+                    'id': item_id,
                     'price': price_id,
                 }]
             )
