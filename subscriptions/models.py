@@ -21,10 +21,10 @@ class UserSubscription(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.plan} - Active: {self.is_active}"
     
-    def get_subscription_item_id(self):
-        """Helper method to get the ID of the first subscription item."""
-        try:
-            subscription = stripe.Subscription.retrieve(self.stripe_subscription_id)
-            return subscription['items']['data'][0].id
-        except Exception:
-            return None
+    # def get_subscription_item_id(self):
+    #     """Helper method to get the ID of the first subscription item."""
+    #     try:
+    #         subscription = stripe.Subscription.retrieve(self.stripe_subscription_id)
+    #         return subscription['items']['data'][0].id
+    #     except Exception:
+    #         return None
