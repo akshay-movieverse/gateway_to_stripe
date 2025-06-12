@@ -64,25 +64,25 @@ def create_checkout_session(request):
     try:
         user_sub = UserSubscription.objects.get(user=user)
         if user_sub.is_active:
-            subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
-            item_id = subscription["items"]["data"][0]["id"]
+            # subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
+            # item_id = subscription["items"]["data"][0]["id"]
             # ✅ Change the plan on the existing Stripe subscription
             stripe.Subscription.modify(
                 user_sub.stripe_subscription_id,
                 cancel_at_period_end=False,
-                proration_behavior='none',
-                billing_cycle_anchor='now',
-                items=[{
-                    'id': item_id,
-                    'price': price_id,
-                }]
+                # proration_behavior='none',
+                # billing_cycle_anchor='now',
+                # items=[{
+                #     'id': item_id,
+                #     'price': price_id,
+                # }]
             )
             # Update our model (will also get updated by webhook)
-            user_sub.plan = price_id
-            user_sub.save()
+            # user_sub.plan = price_id
+            # user_sub.save()
 
-            messages.success(request, "Your plan has been updated successfully.")
-            return redirect('subscription-success')  # Optional: change destination
+            # messages.success(request, "Your plan has been updated successfully.")
+            # return redirect('subscription-success')  # Optional: change destination
     except UserSubscription.DoesNotExist:
         pass  # No subscription exists yet; continue below
 
