@@ -48,58 +48,49 @@ def subscription_success(request):
 def subscription_cancel(request):
     return render(request, "subscription_cancel.html")
 
-
 @login_required
 @require_POST
 def create_checkout_session(request):
     user = request.user
     price_id = request.POST.get("price_id")
 
-    if not price_id:
-        return HttpResponse("Missing price_id", status=400)
-    # ✅ Check if price_id is one of the allowed values
-    if price_id not in PRICES.values():
-        return HttpResponse("Invalid price ID", status=400)
-    
+    if not price_id or price_id not in PRICES.values():
+        return HttpResponse("Invalid or missing price_id", status=400)
+
     try:
-        user_sub = UserSubscription.objects.get(user=user)
-        if user_sub.is_active:
-            # subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
-            # item_id = subscription["items"]["data"][0]["id"]
-            # ✅ Change the plan on the existing Stripe subscription
-            stripe.Subscription.modify(
-                user_sub.stripe_subscription_id,
-                cancel_at_period_end=False,
-                # proration_behavior='none',
-                # billing_cycle_anchor='now',
-                # items=[{
-                #     'id': item_id,
-                #     'price': price_id,
-                # }]
-            )
-            # Update our model (will also get updated by webhook)
-            # user_sub.plan = price_id
-            # user_sub.save()
+        # --- LOGIC FOR EXISTING SUBSCRIBERS ---
+        user_sub = UserSubscription.objects.get(user=user, is_active=True)
+        
+        # This user has an active plan. Send them to the Billing Portal to update it.
+        portal_session = stripe.billing_portal.Session.create(
+            customer=user_sub.stripe_customer_id,
+            return_url=request.build_absolute_uri('/success-updated/'), # A URL to redirect to after they are done
+            flow_data={
+                'type': 'subscription_update',
+                'subscription_update': {
+                    'subscription': user_sub.stripe_subscription_id,
+                    'items': [{'id': user_sub.get_subscription_item_id(), 'price': price_id}],
+                },
+            },
+        )
+        return redirect(portal_session.url)
 
-            # messages.success(request, "Your plan has been updated successfully.")
-            # return redirect('subscription-success')  # Optional: change destination
     except UserSubscription.DoesNotExist:
-        pass  # No subscription exists yet; continue below
-
-
-    checkout_session = stripe.checkout.Session.create(
-        customer_email=request.user.email,
-        payment_method_types=['card'],
-        line_items=[{
-            'price': price_id,
-            'quantity': 1,
-        }],
-        mode='subscription',
-        success_url='https://stripe.countnine.com/success/?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url=request.build_absolute_uri('/cancel/') + '?session_id={CHECKOUT_SESSION_ID}',
-        metadata={"user_id": request.user.id}
-    )
-    return redirect(checkout_session.url)
+        # --- LOGIC FOR NEW SUBSCRIBERS ---
+        # No active subscription found, so create a new one.
+        checkout_session = stripe.checkout.Session.create(
+            customer_email=request.user.email,
+            payment_method_types=['card'],
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url='https://stripe.countnine.com/success/?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.build_absolute_uri('/cancel/'),
+            metadata={"user_id": request.user.id}
+        )
+        return redirect(checkout_session.url)
 
 
 @require_POST
@@ -154,6 +145,17 @@ def stripe_webhook(request):
 
     elif event['type'] == 'customer.subscription.updated':
         sub_data = event['data']['object']
+
+
+        try:
+            stripe.Subscription.update(
+                sub_data['id'],
+                billing_cycle_anchor='now',
+                proration_behavior='none'
+            )
+        except Exception as e:
+            # Log this error, the anchor reset failed but the plan change worked
+            print(f"Error resetting billing anchor: {e}")
         try:
             user_sub = UserSubscription.objects.get(stripe_subscription_id=sub_data['id'])
             user_sub.plan = sub_data['items']['data'][0]['price']['id']
