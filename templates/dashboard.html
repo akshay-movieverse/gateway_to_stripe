@@ -12,6 +12,14 @@
     <h1>Welcome, {{ user.username }}</h1>
     <p>You are logged in with: {{ user.email }}</p>
 
+    {% if user.usersubscription %}
+        <p>Credits: {{ user.usersubscription.credits }}</p>
+    {% else %}
+        <p>No subscription found.</p>
+    {% endif %}
+    
+
+
     <a href="{% url 'account_logout' %}">Logout- not working yet</a>
     <a href="{% url 'subscription' %}">Subscribe to a Plan</a>
 </body>

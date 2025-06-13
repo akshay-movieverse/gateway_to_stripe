@@ -17,6 +17,7 @@ class UserSubscription(models.Model):
     plan = models.CharField(max_length=100)
     current_period_end = models.DateTimeField()
     is_active = models.BooleanField(default=True)  # ✅ Add this field
+    credits = models.IntegerField(default=0)
 
     def __str__(self):
         return f"{self.user.username} - {self.plan} - Active: {self.is_active}"

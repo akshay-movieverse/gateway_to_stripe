@@ -7,6 +7,8 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.contrib.auth.models import User
+
+from subscriptions.utils import assign_credits_by_price_id
 from .models import StripeCustomer, UserSubscription
 from django.utils import timezone
 from datetime import datetime
@@ -156,6 +158,18 @@ def stripe_webhook(request):
         user_sub.is_active = True
         user_sub.save()
         # ➕ Call your credit increment function here
+        assign_credits_by_price_id(user_sub, sub_data['items']['data'][0]['price']['id'])
+
+    elif event['type'] == 'invoice.payment_failed':
+        sub_data = event['data']['object']
+        subscription_id = sub_data['subscription']
+        try:
+            user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)
+            user_sub.credits = 0  # 🔻 Revoke credits
+            user_sub.is_active = False  # Optional: mark as inactive
+            user_sub.save()
+        except UserSubscription.DoesNotExist:
+            pass
 
     elif event['type'] == 'customer.subscription.updated':
         sub_data = event['data']['object']
@@ -173,6 +187,7 @@ def stripe_webhook(request):
             sub_data = event['data']['object']
             user_sub = UserSubscription.objects.get(stripe_subscription_id=sub_data['id'])
             user_sub.is_active = False  # ✅ deactivate
+            user_sub.credits = 0  # 🔻 Clear credits on deletion
             user_sub.save()
         except UserSubscription.DoesNotExist:
             pass
