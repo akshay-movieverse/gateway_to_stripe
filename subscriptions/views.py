@@ -152,8 +152,8 @@ def stripe_webhook(request):
         )
 
     elif event['type'] == 'invoice.payment_succeeded':
-        subscription = event['data']['object']['subscription']
-        user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription)
+        subscription = event['data']['object']['customer']
+        user_sub = UserSubscription.objects.get(stripe_customer_id=subscription)
         # ✅ Ensure is_active is True on payment
         user_sub.is_active = True
         user_sub.save()
@@ -162,9 +162,9 @@ def stripe_webhook(request):
 
     elif event['type'] == 'invoice.payment_failed':
         sub_data = event['data']['object']
-        subscription_id = sub_data['subscription']
+        customer_id = sub_data['customer']
         try:
-            user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)
+            user_sub = UserSubscription.objects.get(stripe_customer_id=customer_id)
             user_sub.credits = 0  # 🔻 Revoke credits
             user_sub.is_active = False  # Optional: mark as inactive
             user_sub.save()
