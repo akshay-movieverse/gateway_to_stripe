@@ -199,6 +199,24 @@ from django.contrib.auth.decorators import login_required
 # Create your views here.
 @login_required
 def home(request):
+
+    if request.method == 'POST':
+        user_id = request.user.id
+        credits = request.POST.get('credits')
+
+        try:
+            user = User.objects.get(id=user_id)
+            sub = user.usersubscription
+            sub.credits = max(0, sub.credits - int(credits))  # avoid negative credits
+            sub.save()
+        #     message = f"Subtracted {credits} credits. Remaining: {sub.credits}"
+        # except User.DoesNotExist:
+        #     message = "User not found."
+        # except UserSubscription.DoesNotExist:
+            message = "User subscription not found."
+        except Exception as e:
+            message = str(e)
+            
     return render(request,"dashboard.html")
 
 
