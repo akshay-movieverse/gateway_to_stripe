@@ -158,7 +158,7 @@ def stripe_webhook(request):
         user_sub.is_active = True
         user_sub.save()
         # ➕ Call your credit increment function here
-        assign_credits_by_price_id(user_sub, sub_data['items']['data'][0]['price']['id'])
+        assign_credits_by_price_id(user_sub, user_sub.plan)
 
     elif event['type'] == 'invoice.payment_failed':
         sub_data = event['data']['object']
