@@ -156,7 +156,7 @@ def stripe_webhook(request):
 
         sub_data = event['data']['object']
         #customer_id = sub_data['customer']
-        print(sub_data)
+        print(event['data'])
         subscription_id = sub_data['subscription']
 
         subscription = event['data']['object']['customer']
