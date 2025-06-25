@@ -156,10 +156,10 @@ def stripe_webhook(request):
 
         sub_data = event['data']['object']
         #customer_id = sub_data['customer']
-        subscription_id = sub_data['subscription']
+        #subscription_id = sub_data['subscription']
 
         subscription = event['data']['object']['customer']
-        subscription = stripe.Subscription.retrieve(subscription_id)
+        #subscription = stripe.Subscription.retrieve(subscription_id)
         user_sub = UserSubscription.objects.get(stripe_customer_id=subscription)
         # ✅ Ensure is_active is True on payment
         user_sub.is_active = True
