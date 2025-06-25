@@ -157,14 +157,14 @@ def stripe_webhook(request):
         sub_data = event['data']['object']
         #customer_id = sub_data['customer']
         print(event['data'])
-        subscription_id = sub_data['subscription']
+        subscription_id = sub_data['parent']['subscription_details']['subscription']
 
         subscription = event['data']['object']['customer']
-        #subscription = stripe.Subscription.retrieve(subscription_id)
+        subscription_obj = stripe.Subscription.retrieve(subscription_id)
         user_sub = UserSubscription.objects.get(stripe_customer_id=subscription)
         # ✅ Ensure is_active is True on payment
         user_sub.is_active = True
-        user_sub.current_period_end = datetime.fromtimestamp(subscription["items"]["data"][0]["current_period_end"])
+        user_sub.current_period_end = datetime.fromtimestamp(subscription_obj["items"]["data"][0]["current_period_end"])
         user_sub.save()
         # ➕ Call your credit increment function here
         assign_credits_by_price_id(user_sub, user_sub.plan)
