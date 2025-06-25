@@ -136,6 +136,7 @@ def stripe_webhook(request):
         session = event['data']['object']
         customer = stripe.Customer.retrieve(session["customer"])
         subscription = stripe.Subscription.retrieve(session["subscription"])
+        print(subscription)
 
         from django.contrib.auth.models import User
         user = User.objects.get(id=session["metadata"]["user_id"])
