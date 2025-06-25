@@ -10,5 +10,13 @@ urlpatterns = [
 
             path('login/', views.login, name='login'),
 
+
+
+            path('pause-subscription/', views.pause_subscription, name='pause-subscription'),
+path('resume-subscription/', views.resume_subscription, name='resume-subscription'),
+path('update-payment-method/', views.update_payment_method, name='update-payment-method'),
+
+
+
         path('', views.home, name='dashboard'),
 ]

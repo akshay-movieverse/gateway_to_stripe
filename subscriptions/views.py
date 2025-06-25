@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.contrib.auth.models import User
 
-from subscriptions.utils import assign_credits_by_price_id
+from subscriptions.utils import assign_credits_by_price_id, check_and_expire_subscription
 from .models import StripeCustomer, UserSubscription
 from django.utils import timezone
 from datetime import datetime
@@ -146,16 +146,23 @@ def stripe_webhook(request):
                 'stripe_customer_id': session["customer"],
                 'stripe_subscription_id': session["subscription"],
                 'plan': subscription["items"]["data"][0]["price"]["id"],
-                'current_period_end': datetime.today(),
+                'current_period_end': datetime.fromtimestamp(subscription["current_period_end"]),
                 'is_active': True  # ✅ set active
             }
         )
 
     elif event['type'] == 'invoice.payment_succeeded':
+
+        sub_data = event['data']['object']
+        #customer_id = sub_data['customer']
+        subscription_id = sub_data['subscription']
+
         subscription = event['data']['object']['customer']
+        subscription = stripe.Subscription.retrieve(subscription_id)
         user_sub = UserSubscription.objects.get(stripe_customer_id=subscription)
         # ✅ Ensure is_active is True on payment
         user_sub.is_active = True
+        user_sub.current_period_end = datetime.fromtimestamp(subscription["current_period_end"])
         user_sub.save()
         # ➕ Call your credit increment function here
         assign_credits_by_price_id(user_sub, user_sub.plan)
@@ -176,7 +183,7 @@ def stripe_webhook(request):
         try:
             user_sub = UserSubscription.objects.get(stripe_subscription_id=sub_data['id'])
             user_sub.plan = sub_data['items']['data'][0]['price']['id']
-            user_sub.current_period_end = datetime.today()#datetime.fromtimestamp(sub_data['current_period_end'])
+            user_sub.current_period_end = datetime.fromtimestamp(sub_data['current_period_end'])
             user_sub.is_active = sub_data['status'] == 'active'  # ✅ update is_active accordingly
             user_sub.save()
         except UserSubscription.DoesNotExist:
@@ -199,28 +206,86 @@ from django.contrib.auth.decorators import login_required
 # Create your views here.
 @login_required
 def home(request):
+    user = request.user
+    sub = user.usersubscription
 
+    # ✅ Expire credits if subscription period has ended
+    check_and_expire_subscription(sub)
+    
     if request.method == 'POST':
-        user_id = request.user.id
-        credits = request.POST.get('credits')
+        credits = int(request.POST.get('credits', 0))
+        if not sub.is_active or sub.credits < credits:
+            messages.error(request, "Not enough credits or subscription expired.")
+            return redirect('dashboard')
 
-        try:
-            user = User.objects.get(id=user_id)
-            sub = user.usersubscription
-            sub.credits = max(0, sub.credits - int(credits))  # avoid negative credits
-            sub.save()
-        #     message = f"Subtracted {credits} credits. Remaining: {sub.credits}"
-        # except User.DoesNotExist:
-        #     message = "User not found."
-        # except UserSubscription.DoesNotExist:
-            message = "User subscription not found."
-        except Exception as e:
-            message = str(e)
-            
+        sub.credits = max(0, sub.credits - credits)
+        sub.save()
+        messages.success(request, f"Used {credits} credits.")
+        return redirect('dashboard')
+
     return render(request,"dashboard.html")
 
 
 def login(request):
     return render(request,"login.html")
+
+
+
+
+
+
+
+@login_required
+def pause_subscription(request):
+    try:
+        user_sub = request.user.usersubscription
+        stripe.Subscription.modify(
+            user_sub.stripe_subscription_id,
+            pause_collection={"behavior": "mark_uncollectible"}
+        )
+        user_sub.is_active = False
+        user_sub.save()
+        messages.success(request, "Subscription paused.")
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+    return redirect('dashboard')
+
+
+@login_required
+def resume_subscription(request):
+    try:
+        user_sub = request.user.usersubscription
+        stripe.Subscription.modify(
+            user_sub.stripe_subscription_id,
+            pause_collection=""  # Clear pause
+        )
+        # Fetch updated subscription period
+        subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
+        user_sub.current_period_end = datetime.fromtimestamp(subscription["current_period_end"])
+        user_sub.is_active = True
+        user_sub.save()
+        messages.success(request, "Subscription resumed.")
+    except Exception as e:
+        messages.error(request, f"Error: {e}")
+    return redirect('dashboard')
+
+
+
+
+
+
+
+
+@login_required
+def update_payment_method(request):
+    user_sub = request.user.usersubscription
+    session = stripe.checkout.Session.create(
+        customer=user_sub.stripe_customer_id,
+        payment_method_types=['card'],
+        mode='setup',
+        success_url=request.build_absolute_uri('/dashboard/'),
+        cancel_url=request.build_absolute_uri('/dashboard/'),
+    )
+    return redirect(session.url)
 
 

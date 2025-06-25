@@ -18,3 +18,12 @@ def assign_credits_by_price_id(user_sub, price_id):
         user_sub.save()
     else:
         raise ValueError(f"Invalid price_id: {price_id}")
+    
+
+from django.utils import timezone
+
+def check_and_expire_subscription(user_sub):
+    if user_sub.current_period_end < timezone.now():
+        user_sub.is_active = False
+        user_sub.credits = 0
+        user_sub.save()

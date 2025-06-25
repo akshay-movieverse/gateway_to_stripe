@@ -13,6 +13,22 @@
     <p>You are logged in with: {{ user.email }}</p>
 
     {% if user.usersubscription %}
+
+        <form method="post" action="{% url 'pause-subscription' %}">
+  {% csrf_token %}
+  <button type="submit">Pause Subscription</button>
+</form>
+
+<form method="post" action="{% url 'resume-subscription' %}">
+  {% csrf_token %}
+  <button type="submit">Resume Subscription</button>
+</form>
+
+<form method="get" action="{% url 'update-payment-method' %}">
+  <button type="submit">Update Payment Method</button>
+</form>
+
+
         <p>Credits: {{ user.usersubscription.credits }}</p>
     {% else %}
         <p>No subscription found.</p>
@@ -27,5 +43,11 @@
 
     <a href="{% url 'account_logout' %}">Logout- not working yet</a>
     <a href="{% url 'subscription' %}">Subscribe to a Plan</a>
+
+
+
+
+
+
 </body>
 </html>
