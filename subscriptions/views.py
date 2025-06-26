@@ -156,7 +156,7 @@ def stripe_webhook(request):
 
         sub_data = event['data']['object']
         #customer_id = sub_data['customer']
-        print(event['data'])
+        #print(event['data'])
         subscription_id = sub_data['parent']['subscription_details']['subscription']
 
         subscription = event['data']['object']['customer']
@@ -185,7 +185,7 @@ def stripe_webhook(request):
         try:
             user_sub = UserSubscription.objects.get(stripe_subscription_id=sub_data['id'])
             user_sub.plan = sub_data['items']['data'][0]['price']['id']
-            user_sub.current_period_end = datetime.fromtimestamp(sub_data['current_period_end'])
+            user_sub.current_period_end = datetime.fromtimestamp(sub_data["items"]["data"][0]["current_period_end"])
             user_sub.is_active = sub_data['status'] == 'active'  # ✅ update is_active accordingly
             user_sub.save()
         except UserSubscription.DoesNotExist:
@@ -263,7 +263,7 @@ def resume_subscription(request):
         )
         # Fetch updated subscription period
         subscription = stripe.Subscription.retrieve(user_sub.stripe_subscription_id)
-        user_sub.current_period_end = datetime.fromtimestamp(subscription["current_period_end"])
+        user_sub.current_period_end = datetime.fromtimestamp(subscription["items"]["data"][0]["current_period_end"])
         user_sub.is_active = True
         user_sub.save()
         messages.success(request, "Subscription resumed.")
