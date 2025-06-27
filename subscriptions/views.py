@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -423,7 +423,8 @@ def stripe_webhook(request):
                 #logger.info(f"Unhandled webhook event type: {event_type}")
         except Exception as e:
             #logger.critical(f"Error processing Stripe webhook event {event_type} for object {data_object.get('id', 'N/A')}: {e}", exc_info=True)
-            return HttpResponse(status=500) # Internal Server Error for processing issues
+            print(f"Error processing Stripe webhook event {event_type} for object {data_object.get('id', 'N/A')}: {e}")
+            return JsonResponse({'error': str(e)}, status=500) #HttpResponse(status=500) # Internal Server Error for processing issues
 
     return HttpResponse(status=200)
 
