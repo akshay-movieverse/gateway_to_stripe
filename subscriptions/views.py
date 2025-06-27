@@ -10,8 +10,8 @@ from django.contrib.auth.models import User
 
 from subscriptions.utils import assign_credits_by_price_id, check_and_expire_subscription, handle_subscription_period_end
 from .models import Invoice, StripeCustomer, StripePlan, UserSubscription
-from django.utils import timezone
-from datetime import datetime
+from django.utils import timezone as dj_timezone
+from datetime import datetime, timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
@@ -240,7 +240,7 @@ def stripe_webhook(request):
                             'current_period_start': datetime.fromtimestamp(stripe_subscription["items"]["data"][0]["current_period_start"], tz=timezone.utc),
                             'current_period_end': datetime.fromtimestamp(stripe_subscription["items"]["data"][0]["current_period_end"], tz=timezone.utc),
                             #'monthly_credit_allotment': selected_plan.monthly_credit_allotment, # Set initial allotment
-                            'last_credit_refill_date': timezone.now() # Mark credits refilled
+                            'last_credit_refill_date': dj_timezone.now() # Mark credits refilled
                         }
                     )
                     #user_sub = UserSubscription.objects.get(user=user) # Retrieve the updated/created sub
