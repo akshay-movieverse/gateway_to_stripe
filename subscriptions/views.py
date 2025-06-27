@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.contrib.auth.models import User
 
-from subscriptions.utils import assign_credits_by_price_id, check_and_expire_subscription, handle_subscription_period_end
+from subscriptions.utils import assign_credits_based_on_plan, assign_credits_by_price_id, check_and_expire_subscription, handle_subscription_period_end
 from .models import Invoice, StripeCustomer, StripePlan, UserSubscription
 from django.utils import timezone as dj_timezone
 from datetime import datetime, timezone
@@ -258,8 +258,8 @@ def stripe_webhook(request):
                             'last_credit_refill_date': dj_timezone.now() # Mark credits refilled
                         }
                     )
-                    #user_sub = UserSubscription.objects.get(user=user) # Retrieve the updated/created sub
-                    #assign_credits_based_on_plan(user_sub, selected_plan.stripe_price_id) # Assign initial credits
+                    user_sub = UserSubscription.objects.get(user=user) # Retrieve the updated/created sub
+                    assign_credits_based_on_plan(user_sub, selected_plan) # Assign initial credits
                     #logger.info(f"User {user.username} subscription (ID: {subscription_id}) created/updated.")
 
                 elif session_mode == 'setup':
@@ -434,6 +434,14 @@ def stripe_webhook(request):
                     user_sub.status = 'canceled' # Or 'ended' depending on your lifecycle
                     user_sub.credits = 0 # Clear credits on deletion
                     #user_sub.stripe_subscription_id = None # Clear subscription ID as it's deleted
+
+                    lifetime_plan = get_object_or_404(StripePlan, plan_type='lifetime')
+                    user_sub.plan = lifetime_plan
+                    user_sub.credits = lifetime_plan.monthly_credit_allotment
+                    user_sub.stripe_subscription_id = "Ended"
+
+
+
                     user_sub.save()
                     #logger.info(f"User {user_sub.user.username} subscription {subscription_id} deleted. Deactivated and credits revoked.")
                 except UserSubscription.DoesNotExist:
