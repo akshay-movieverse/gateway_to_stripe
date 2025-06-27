@@ -15,7 +15,35 @@
 <h2>Choose a Subscription Plan</h2>
 <div class="plans">
 
-  {% comment %} $5 Plan {% endcomment %}
+{% if current_plan_name %}
+    <p>Your current plan: {{ current_plan_name }}</p>
+{% else %}
+    <p>You don't have an active plan. Choose one below:</p>
+{% endif %}
+
+
+{% for plan in available_plans %}
+    <div>
+        <h3>{{ plan.name }}</h3>
+        <p>{{ plan.description }}</p>
+        <p>Monthly Credits: {{ plan.monthly_credit_allotment }}</p>
+        <form action="{% url 'create-checkout-session' %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="price_id" value="{{ plan.stripe_price_id }}">
+            <button type="submit">Subscribe to {{ plan.name }}</button>
+        </form>
+    </div>
+{% endfor %}
+
+
+
+</div>
+{% endblock %}
+
+
+
+
+  {% comment %} 
   {% if current_plan == 'price_1RS9OPSEv1tl6ISPdv59qBYR' %}
     <p><strong>$5/month</strong> — Current Plan</p>
         <form action="{% url 'create-checkout-session' %}" method="post">
@@ -31,7 +59,7 @@
     </form>
   {% endif %}
 
-  {% comment %} $10 Plan {% endcomment %}
+
   {% if current_plan == 'price_1RS9PpSEv1tl6ISPgkliHHER' %}
     <p><strong>$10/month</strong> — Current Plan</p>
 
@@ -48,7 +76,7 @@
     </form>
   {% endif %}
 
-  {% comment %} $20 Plan {% endcomment %}
+
   {% if current_plan == 'price_1RS9Q6SEv1tl6ISP6u6RFTWx' %}
     <p><strong>$20/month</strong> — Current Plan</p>
         <form action="{% url 'create-checkout-session' %}" method="post">
@@ -64,5 +92,7 @@
     </form>
   {% endif %}
 
-</div>
-{% endblock %}
+
+
+
+   {% endcomment %}

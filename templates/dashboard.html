@@ -9,7 +9,7 @@
     <title>Dashboard</title>
 </head>
 <body>
-    <h1>Welcome, {{ user.username }}</h1>
+    {% comment %} <h1>Welcome, {{ user.username }}</h1>
     <p>You are logged in with: {{ user.email }}</p>
 
     {% if user.usersubscription %}
@@ -32,21 +32,63 @@
         <p>Credits: {{ user.usersubscription.credits }}</p>
     {% else %}
         <p>No subscription found.</p>
-    {% endif %}
+    {% endif %} {% endcomment %}
     
-<form method="post">
-  {% csrf_token %}
+{% comment %} <form method="post">
+  {% csrf_token %} {% endcomment %}
   {% comment %} <label>User ID: <input type="number" name="user_id" required></label><br> {% endcomment %}
-  <label>Credits to subtract: <input type="number" name="credits" required></label><br>
+  {% comment %} <label>Credits to subtract: <input type="number" name="credits" required></label><br>
   <button type="submit">Subtract Credits</button>
-</form>
+</form> {% endcomment %}
 
     <a href="{% url 'account_logout' %}">Logout- not working yet</a>
     <a href="{% url 'subscription' %}">Subscribe to a Plan</a>
 
 
 
+{# Inside dashboard.html #}
+{% if user_subscription %}
+    <p>Your current plan: {{ user_subscription.plan.name }}</p>
+    <p>Status: {{ user_subscription.get_status_display }}</p> {# Displays human-readable status #}
+    <p>Credits: {{ user_subscription.credits }}</p>
+    <p>Next billing period ends: {{ user_subscription.current_period_end|date:"F d, Y" }}</p>
 
+    {% if user_subscription.is_active %}
+        <form action="{% url 'pause-subscription' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Pause Subscription</button>
+        </form>
+    {% elif user_subscription.status == 'paused' %}
+        <form action="{% url 'resume-subscription' %}" method="post">
+            {% csrf_token %}
+            <button type="submit">Resume Subscription</button>
+        </form>
+    {% endif %}
+
+    <form action="{% url 'update-payment-method' %}" method="get"> {# Changed to get for direct redirect #}
+        {% csrf_token %}
+        <button type="submit">Update Payment Method</button>
+    </form>
+
+    {# Form to use credits #}
+    <form action="{% url 'dashboard' %}" method="post">
+        {% csrf_token %}
+        <label for="credits_to_use">Use Credits:</label>
+        <input type="number" id="credits_to_use" name="credits" min="1" max="{{ user_subscription.credits }}" required>
+        <button type="submit">Use</button>
+    </form>
+
+{% else %}
+    <p>You do not have an active subscription. <a href="{% url 'subscription' %}">Subscribe now!</a></p>
+{% endif %}
+
+{% if messages %}
+    <ul class="messages">
+        {% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
 
 
 </body>
