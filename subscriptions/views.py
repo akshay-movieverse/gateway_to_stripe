@@ -270,7 +270,11 @@ def stripe_webhook(request):
             elif event_type == 'invoice.payment_succeeded':
                 invoice = data_object
                 # CORRECTED LINE: Access subscription ID directly from the invoice object
-                subscription_id = invoice.get('subscription') 
+                #subscription_id = invoice.get('subscription') 
+                subscription_id = None
+                if 'parent' in invoice and 'subscription_details' in invoice['parent']:
+                    subscription_id = invoice['parent']['subscription_details'].get('subscription')
+    
                 customer_id = invoice.get('customer')
 
                 if not (subscription_id and customer_id):
