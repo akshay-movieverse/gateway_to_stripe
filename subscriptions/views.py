@@ -112,6 +112,7 @@ def create_checkout_session(request):
     
 
     customer_id = None
+    old_subscription_id = ""
     try:
         # Check if the user already has a Stripe customer ID
         user_sub = UserSubscription.objects.get(user=user)
@@ -121,7 +122,9 @@ def create_checkout_session(request):
         # Stripe will handle proration and effective dates.
         if user_sub.is_active and user_sub.stripe_subscription_id:
             try:
-                stripe.Subscription.cancel(user_sub.stripe_subscription_id)
+                old_subscription_id = user_sub.stripe_subscription_id
+                #stripe.Subscription.cancel(user_sub.stripe_subscription_id)
+
                 #messages.info(request, "Your previous subscription is being updated/cancelled.")
                 # logger.info(f"User {user.username} cancelling existing subscription {user_sub.stripe_subscription_id} "
                 #             f"before creating a new one with price_id: {price_id}")
@@ -153,7 +156,8 @@ def create_checkout_session(request):
             cancel_url=request.build_absolute_uri('/cancel/') + '?session_id={CHECKOUT_SESSION_ID}',
             metadata={
                 "user_id": str(user.id), # Ensure user_id is a string
-                "plan_id": str(selected_plan.id) # Pass internal plan ID for easier lookup in webhook
+                "plan_id": str(selected_plan.id), # Pass internal plan ID for easier lookup in webhook
+                "old_subscription_id": old_subscription_id
             }
         )
         return redirect(checkout_session.url)
@@ -202,10 +206,21 @@ def stripe_webhook(request):
                 session = data_object
                 session_mode = session.get("mode")
                 user_id = session["metadata"].get("user_id")
-                
+                old_subscription_id = session["metadata"].get('old_subscription_id')
+
                 if not user_id:
                     #logger.error(f"checkout.session.completed event missing user_id in metadata: {session.id}")
                     return HttpResponse(status=400)
+                
+                
+                if old_subscription_id:
+                    try:
+                        stripe.Subscription.cancel(old_subscription_id)
+                        #logger.info(f"Canceled old subscription {old_subscription_id} for user {user_id}")
+                    except stripe.error.StripeError as e:
+                        pass
+                        #logger.error(f"Error canceling old subscription {old_subscription_id}: {e}")
+
 
                 user = get_object_or_404(User, id=user_id)
 
@@ -282,7 +297,7 @@ def stripe_webhook(request):
                     return HttpResponse(status=400)
 
                 try:
-                    user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id, stripe_customer_id=customer_id)
+                    user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)#, stripe_customer_id=customer_id)
                 except UserSubscription.DoesNotExist:
                     #logger.error(f"UserSubscription not found for sub ID {subscription_id} and customer ID {customer_id}.")
                     return HttpResponse(status=404)
@@ -292,7 +307,7 @@ def stripe_webhook(request):
                 user_sub.status = 'active'
                 # Use current_period_end from the invoice itself, as it reflects the new period
                 user_sub.current_period_end = datetime.fromtimestamp(invoice["period_end"], tz=timezone.utc)
-                user_sub.start_date = datetime.fromtimestamp(invoice["period_start"], tz=timezone.utc)
+                #user_sub.current_period_start = datetime.fromtimestamp(invoice["period_start"], tz=timezone.utc)
                 user_sub.save()
 
                 # Add credits for the new billing period
@@ -324,7 +339,10 @@ def stripe_webhook(request):
             elif event_type == 'invoice.payment_failed':
                 invoice = data_object
                 # CORRECTED LINE: Access subscription ID directly from the invoice object
-                subscription_id = invoice.get('subscription') 
+                subscription_id = None
+                if 'parent' in invoice and 'subscription_details' in invoice['parent']:
+                    subscription_id = invoice['parent']['subscription_details'].get('subscription')
+
                 customer_id = invoice.get('customer')
 
                 if not (subscription_id and customer_id):
@@ -332,7 +350,7 @@ def stripe_webhook(request):
                     return HttpResponse(status=400)
 
                 try:
-                    user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id, stripe_customer_id=customer_id)
+                    user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)#, stripe_customer_id=customer_id)
                     user_sub.is_active = False # Mark as inactive
                     user_sub.status = 'past_due' if invoice['billing_reason'] == 'subscription_cycle' else 'unpaid'
                     user_sub.credits = 0 # Revoke credits
@@ -381,8 +399,8 @@ def stripe_webhook(request):
 
                 user_sub.status = sub_data['status']
                 user_sub.is_active = sub_data['status'] == 'active' or sub_data['status'] == 'trialing'
-                user_sub.current_period_start = datetime.fromtimestamp(sub_data["current_period_start"], tz=timezone.utc)
-                user_sub.current_period_end = datetime.fromtimestamp(sub_data["current_period_end"], tz=timezone.utc)
+                user_sub.current_period_start = datetime.fromtimestamp(sub_data["items"]["data"][0]["current_period_start"], tz=timezone.utc)
+                user_sub.current_period_end = datetime.fromtimestamp(sub_data["items"]["data"][0]["current_period_end"], tz=timezone.utc)
 
                 # Handle pause/resume related fields
                 pause_collection_behavior = sub_data.get('pause_collection', {}).get('behavior')
@@ -415,7 +433,7 @@ def stripe_webhook(request):
                     user_sub.is_active = False
                     user_sub.status = 'canceled' # Or 'ended' depending on your lifecycle
                     user_sub.credits = 0 # Clear credits on deletion
-                    user_sub.stripe_subscription_id = None # Clear subscription ID as it's deleted
+                    #user_sub.stripe_subscription_id = None # Clear subscription ID as it's deleted
                     user_sub.save()
                     #logger.info(f"User {user_sub.user.username} subscription {subscription_id} deleted. Deactivated and credits revoked.")
                 except UserSubscription.DoesNotExist:
