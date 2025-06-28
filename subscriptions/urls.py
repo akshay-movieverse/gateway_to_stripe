@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('subscribe/', views.subscribe_view, name='subscription'),
+    path('subscribe/', views.subscribe_view, name='subscribe'),
     path('success/', views.subscription_success, name='subscription-success'),
     path('cancel/', views.subscription_cancel, name='subscription-cancel'),
     path('create-checkout-session/', views.create_checkout_session, name='create-checkout-session'),

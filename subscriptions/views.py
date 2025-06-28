@@ -142,9 +142,8 @@ def create_checkout_session(request):
         pass # No existing subscription, proceed to create customer/checkout session
 
     try:
-        # Create a new checkout session
         checkout_session = stripe.checkout.Session.create(
-            customer_email=user.email if not customer_id else None, # Only provide email if creating new customer
+            customer_email=user.email, #if not customer_id else None, # Only provide email if creating new customer
             customer=customer_id, # Use existing customer if available
             payment_method_types=['card'],
             line_items=[{
