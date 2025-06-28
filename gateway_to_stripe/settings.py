@@ -189,3 +189,5 @@ ACCOUNT_SIGNUP_REDIRECT_URL = '/accounts/google/login/'  # Redirect signup attem
 STRIPE_PUBLIC_KEY = os.environ.get('STRIPE_PUBLIC_KEY', 'your_default_public_key_here')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'your_default_secret_key_here')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'your_default_webhook_secret_here')
+
+SESSION_COOKIE_AGE = 315360000

@@ -143,7 +143,7 @@ def create_checkout_session(request):
 
     try:
         checkout_session = stripe.checkout.Session.create(
-            customer_email=user.email, #if not customer_id else None, # Only provide email if creating new customer
+            customer_email=user.email if not customer_id else None, # Only provide email if creating new customer
             customer=customer_id, # Use existing customer if available
             payment_method_types=['card'],
             line_items=[{
@@ -263,22 +263,53 @@ def stripe_webhook(request):
 
                 elif session_mode == 'setup':
                     # This session was to set up a payment method.
-                    # The primary customer object in Stripe will be updated by Stripe itself.
-                    # We primarily need to ensure the customer_id exists for the user.
+                    # We need to link this new payment method to the user's active subscription.
                     customer_id = session.get("customer")
-                    if customer_id and user_id:
-                        user_sub, created = UserSubscription.objects.get_or_create(
-                            user=user,
-                            defaults={'stripe_customer_id': customer_id}
+                    setup_intent_id = session.get("setup_intent")
+
+                    if not (customer_id and setup_intent_id and user_id):
+                        #logger.warning(f"checkout.session.completed (setup) missing customer_id, setup_intent_id or user_id: {session.id}")
+                        return HttpResponse(status=400) # Bad Request
+
+                    try:
+                        user_sub = UserSubscription.objects.get(user=user, stripe_customer_id=customer_id)
+                        if not user_sub.stripe_subscription_id:
+                            #logger.warning(f"User {user.username} completed setup session but has no active subscription to link payment method to.")
+                            return HttpResponse(status=200) # Nothing to update if no active subscription
+
+                        # Retrieve the SetupIntent to get the new payment method ID
+                        setup_intent = stripe.SetupIntent.retrieve(setup_intent_id)
+                        new_payment_method_id = setup_intent.payment_method
+
+                        if not new_payment_method_id:
+                            #logger.error(f"SetupIntent {setup_intent_id} did not have a payment_method attached.")
+                            return HttpResponse(status=400) # Bad request if no PM ID
+
+                        # Update the customer's default payment method in Stripe
+                        # This isn't strictly necessary if you're setting it on the subscription,
+                        # but often good practice for general customer management.
+                        stripe.Customer.modify(
+                            customer_id,
+                            invoice_settings={'default_payment_method': new_payment_method_id}
                         )
-                        if not created:
-                             # If subscription already exists, ensure customer ID is correct
-                            user_sub.stripe_customer_id = customer_id
-                            user_sub.save()
-                        #logger.info(f"User {user.username} successfully updated payment method (customer ID: {customer_id}).")
-                    else:
-                        pass
-                        #logger.warning(f"checkout.session.completed (setup) missing customer_id or user_id: {session.id}")
+
+                        # Update the user's *active* subscription with the new default payment method
+                        stripe.Subscription.modify(
+                            user_sub.stripe_subscription_id,
+                            default_payment_method=new_payment_method_id
+                        )
+                        # logger.info(f"User {user.username}'s active subscription {user_sub.stripe_subscription_id} "
+                        #             f"updated with new default payment method: {new_payment_method_id}.")
+
+                    except UserSubscription.DoesNotExist:
+                        #logger.error(f"UserSubscription not found for user {user.username} or customer {customer_id} on setup session completion.")
+                        return HttpResponse(status=404)
+                    except stripe.error.StripeError as e:
+                        #logger.error(f"Stripe API error during setup session completion for user {user.username}: {e}", exc_info=True)
+                        return HttpResponse(status=500)
+                    except Exception as e:
+                        #logger.critical(f"Unexpected error during setup session completion for user {user.username}: {e}", exc_info=True)
+                        return HttpResponse(status=500)
 
 
             elif event_type == 'invoice.payment_succeeded':
