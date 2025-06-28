@@ -305,7 +305,9 @@ def stripe_webhook(request):
                 user_sub.is_active = True
                 user_sub.status = 'active'
                 # Use current_period_end from the invoice itself, as it reflects the new period
-                user_sub.current_period_end = datetime.fromtimestamp(invoice["period_end"], tz=timezone.utc)
+                # Get the subscription line item from the invoice
+                line_item = invoice["lines"]["data"][0]
+                user_sub.current_period_end = datetime.fromtimestamp(line_item["period"]["end"], tz=timezone.utc)
                 #user_sub.current_period_start = datetime.fromtimestamp(invoice["period_start"], tz=timezone.utc)
                 user_sub.save()
 
@@ -328,8 +330,8 @@ def stripe_webhook(request):
                     status=invoice['status'],
                     invoice_pdf=invoice.get('invoice_pdf'),
                     invoice_page=invoice.get('hosted_invoice_url'),
-                    period_start=datetime.fromtimestamp(invoice['period_start'], tz=timezone.utc),
-                    period_end=datetime.fromtimestamp(invoice['period_end'], tz=timezone.utc),
+                    period_start=datetime.fromtimestamp(line_item["period"]["start"], tz=timezone.utc),
+                    period_end=datetime.fromtimestamp(line_item["period"]["end"], tz=timezone.utc),
                     is_successful_payment=True
                 )
                 #logger.info(f"Invoice {invoice['id']} payment succeeded for user {user_sub.user.username}.")
@@ -368,8 +370,8 @@ def stripe_webhook(request):
                     status=invoice['status'],
                     invoice_pdf=invoice.get('invoice_pdf'),
                     invoice_page=invoice.get('hosted_invoice_url'),
-                    period_start=datetime.fromtimestamp(invoice['period_start'], tz=timezone.utc),
-                    period_end=datetime.fromtimestamp(invoice['period_end'], tz=timezone.utc),
+                    period_start=datetime.fromtimestamp(line_item["period"]["start"], tz=timezone.utc),
+                    period_end=datetime.fromtimestamp(line_item["period"]["end"], tz=timezone.utc),
                     is_successful_payment=False
                 )
                 #logger.warning(f"Invoice {invoice['id']} payment failed for user {user_sub.user.username}.")
