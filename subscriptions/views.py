@@ -434,8 +434,11 @@ def stripe_webhook(request):
                 user_sub.current_period_start = datetime.fromtimestamp(sub_data["items"]["data"][0]["current_period_start"], tz=timezone.utc)
                 user_sub.current_period_end = datetime.fromtimestamp(sub_data["items"]["data"][0]["current_period_end"], tz=timezone.utc)
 
+                pause_collection_behavior = None
+                if 'pause_collection' in sub_data and sub_data['pause_collection'] is not None:
+                    pause_collection_behavior = sub_data['pause_collection'].get('behavior')
                 # Handle pause/resume related fields
-                pause_collection_behavior = sub_data.get('pause_collection', {}).get('behavior')
+                #pause_collection_behavior = sub_data.get('pause_collection', {}).get('behavior')
                 if pause_collection_behavior:
                     # When paused, Stripe sets the status to 'paused' and provides pause_collection details
                     user_sub.is_paused = True
