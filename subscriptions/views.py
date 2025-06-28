@@ -370,6 +370,7 @@ def stripe_webhook(request):
 
             elif event_type == 'invoice.payment_failed':
                 invoice = data_object
+                line_item = invoice["lines"]["data"][0]
                 # CORRECTED LINE: Access subscription ID directly from the invoice object
                 subscription_id = None
                 if 'parent' in invoice and 'subscription_details' in invoice['parent']:
@@ -390,6 +391,7 @@ def stripe_webhook(request):
                 except UserSubscription.DoesNotExist:
                     #logger.error(f"UserSubscription not found for sub ID {subscription_id} and customer ID {customer_id}.")
                     return HttpResponse(status=404)
+                
 
                 # Create invoice record for failed payment
                 Invoice.objects.create(
