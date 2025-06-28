@@ -680,6 +680,9 @@ def update_payment_method(request):
             mode='setup', # Use setup mode for updating payment methods
             success_url=request.build_absolute_uri('/dashboard/'),
             cancel_url=request.build_absolute_uri('/dashboard/'),
+            metadata={
+                "user_id": str(user.id), # Pass user_id for webhook to identify user
+            }
         )
         #logger.info(f"User {user.username} redirected to Stripe for payment method update.")
         return redirect(session.url)
