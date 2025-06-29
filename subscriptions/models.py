@@ -84,7 +84,12 @@ class Invoice(models.Model):
     Records historical invoice data from Stripe for auditing and user display.
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
-
+    user_subscription_id = models.CharField(
+        max_length=100,  # Adjust length as needed
+        null=True,
+        blank=True,
+        help_text="The ID of the subscription related to this invoice (if applicable)."
+    )
     stripe_invoice_id = models.CharField(max_length=255, unique=True, help_text="The unique ID of the invoice in Stripe.")
     amount_due = models.DecimalField(max_digits=10, decimal_places=2, help_text="The total amount due for this invoice.")
     currency = models.CharField(max_length=3, default='usd', help_text="e.g., 'usd', 'eur'")

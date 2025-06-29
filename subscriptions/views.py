@@ -326,6 +326,11 @@ def stripe_webhook(request):
                     #logger.error(f"invoice.payment_succeeded missing subscription_id or customer_id: {invoice.id}")
                     return HttpResponse(status=400)
 
+                # Check if invoice already exists to prevent duplicates
+                if Invoice.objects.filter(stripe_invoice_id=invoice['id']).exists():
+                    #logger.info(f"Invoice {invoice['id']} already exists. Skipping duplicate creation.")
+                    return HttpResponse(status=200) # Acknowledge the webhook
+                
                 try:
                     user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)#, stripe_customer_id=customer_id)
                 except UserSubscription.DoesNotExist:
@@ -381,7 +386,12 @@ def stripe_webhook(request):
                 if not (subscription_id and customer_id):
                     #logger.error(f"invoice.payment_failed missing subscription_id or customer_id: {invoice.id}")
                     return HttpResponse(status=400)
-
+                # Check if invoice already exists to prevent duplicates
+                
+                if Invoice.objects.filter(stripe_invoice_id=invoice['id']).exists():
+                    #logger.info(f"Invoice {invoice['id']} already exists. Skipping duplicate creation.")
+                    return HttpResponse(status=200) # Acknowledge the webhook
+                
                 try:
                     user_sub = UserSubscription.objects.get(stripe_subscription_id=subscription_id)#, stripe_customer_id=customer_id)
                     user_sub.is_active = False # Mark as inactive
@@ -472,14 +482,31 @@ def stripe_webhook(request):
                     user_sub.credits = 0 # Clear credits on deletion
                     #user_sub.stripe_subscription_id = None # Clear subscription ID as it's deleted
 
-                    lifetime_plan = get_object_or_404(StripePlan, plan_type='lifetime')
-                    user_sub.plan = lifetime_plan
-                    user_sub.credits = lifetime_plan.monthly_credit_allotment
-                    user_sub.stripe_subscription_id = "Ended"
-
-
-
+                    # lifetime_plan = get_object_or_404(StripePlan, plan_type='lifetime')
+                    # user_sub.plan = lifetime_plan
+                    # user_sub.credits = lifetime_plan.monthly_credit_allotment
+                    # user_sub.stripe_subscription_id = "Ended"
                     user_sub.save()
+
+                    # --- New logic: Void outstanding invoices for the canceled subscription ---
+                    outstanding_invoices = Invoice.objects.filter(
+                        user_subscription_id=user_sub.stripe_subscription_id,  # or user_sub.subscription_id
+                        status__in=['open', 'past_due'] # Assuming these are the statuses for unpaid invoices
+                    )
+                    for inv_record in outstanding_invoices:
+                        try:
+                            stripe.Invoice.void_invoice(inv_record.stripe_invoice_id)
+                            inv_record.status = 'void' # Update local status
+                            inv_record.save()
+                            #logger.info(f"Invoice {inv_record.stripe_invoice_id} for {user_sub.user.username} voided due to subscription cancellation.")
+                        except stripe.error.StripeError as e:
+                            pass
+                            #logger.error(f"Stripe error voiding invoice {inv_record.stripe_invoice_id} for user {user_sub.user.username}: {e}", exc_info=True)
+                        except Exception as e:
+                            pass
+                            #logger.critical(f"Unexpected error voiding invoice {inv_record.stripe_invoice_id} for user {user_sub.user.username}: {e}", exc_info=True)
+                    # --- End of new logic ---
+
                     #logger.info(f"User {user_sub.user.username} subscription {subscription_id} deleted. Deactivated and credits revoked.")
                 except UserSubscription.DoesNotExist:
                     #logger.warning(f"customer.subscription.deleted: UserSubscription not found for sub ID {subscription_id} and customer ID {customer_id}.")
