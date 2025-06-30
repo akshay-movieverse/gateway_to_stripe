@@ -57,6 +57,10 @@ class UserSubscription(models.Model):
     is_active = models.BooleanField(default=True)  # ✅ Add this field
     is_paused = models.BooleanField(default=False)
     credits = models.IntegerField(default=0)
+        # --- NEW FIELD FOR CANCEL AT PERIOD END ---
+    cancel_at_period_end_stripe = models.BooleanField(default=False,
+                                                      help_text="If True, the subscription is set to cancel at the end of the current billing period on Stripe.")
+    # --- END NEW FIELD ---
     
     status = models.CharField(max_length=20, choices=SUBSCRIPTION_STATUS_CHOICES, default='incomplete',
                               help_text="Current status of the Stripe subscription.")

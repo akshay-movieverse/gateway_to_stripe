@@ -465,7 +465,9 @@ def stripe_webhook(request):
                         user_sub.is_paused = False
                         #user_sub.is_active = True
                         
-
+                # --- NEW: Update cancel_at_period_end_stripe field ---
+                user_sub.cancel_at_period_end_stripe = sub_data.get('cancel_at_period_end', False)
+                # --- END NEW ---
                 user_sub.save()
                 #logger.info(f"User {user_sub.user.username} subscription {subscription_id} updated to status: {user_sub.status}.")
 
@@ -729,3 +731,45 @@ def update_payment_method(request):
         #logger.critical(f"Unexpected error creating setup session for user {user.username}: {e}", exc_info=True)
     return redirect('dashboard')
 
+
+
+@login_required
+@require_POST
+def cancel_subscription_at_period_end(request):
+    """
+    Sets a user's Stripe subscription to cancel at the end of the current billing period.
+    """
+    user = request.user
+    try:
+        user_sub = UserSubscription.objects.get(user=user)
+        if not user_sub.stripe_subscription_id:
+            messages.error(request, "You don't have an active Stripe subscription to cancel.")
+            return redirect('dashboard')
+        
+        # Prevent multiple clicks / redundant API calls if already set to cancel
+        if user_sub.cancel_at_period_end_stripe:
+            messages.info(request, "Your subscription is already set to cancel at the end of the period.")
+            return redirect('dashboard')
+
+        # Modify the Stripe subscription to cancel at period end
+        stripe.Subscription.modify(
+            user_sub.stripe_subscription_id,
+            cancel_at_period_end=True
+        )
+        
+        # Immediately update local model for responsive UI
+        user_sub.cancel_at_period_end_stripe = True
+        user_sub.save()
+
+        messages.success(request, "Your subscription will be canceled at the end of the current billing period.")
+        #logger.info(f"Subscription {user_sub.stripe_subscription_id} for user {user.username} set to cancel at period end.")
+    except UserSubscription.DoesNotExist:
+        messages.error(request, "Subscription not found for your account.")
+        #logger.warning(f"Attempt to cancel non-existent subscription for user {user.username}.")
+    except stripe.error.StripeError as e:
+        messages.error(request, f"Stripe error setting subscription to cancel at period end: {e}")
+        #logger.error(f"Stripe error canceling subscription at period end for user {user.username}: {e}", exc_info=True)
+    except Exception as e:
+        messages.error(request, "An unexpected error occurred while canceling your subscription.")
+        #logger.critical(f"Unexpected error canceling subscription at period end for user {user.username}: {e}", exc_info=True)
+    return redirect('dashboard')

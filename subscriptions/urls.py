@@ -11,7 +11,7 @@ urlpatterns = [
             path('login/', views.login, name='login'),
 
 
-
+path('cancel-at-period-end/', views.cancel_subscription_at_period_end, name='cancel-at-period-end'),
             path('pause-subscription/', views.pause_subscription, name='pause-subscription'),
 path('resume-subscription/', views.resume_subscription, name='resume-subscription'),
 path('update-payment-method/', views.update_payment_method, name='update-payment-method'),

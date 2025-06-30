@@ -70,6 +70,18 @@
         <button type="submit">Update Payment Method</button>
     </form>
 
+        {# --- NEW: Cancel at Period End Button --- #}
+    {% if not user_subscription.cancel_at_period_end_stripe %}
+        <form action="{% url 'cancel-at-period-end' %}" method="post" style="display: inline-block;">
+            {% csrf_token %}
+            <button type="submit">Cancel at Period End</button>
+        </form>
+    {% else %}
+        <p>Subscription set to cancel at period end.</p>
+    {% endif %}
+    {# --- END NEW --- #}
+
+    
     {# Form to use credits #}
     <form action="{% url 'dashboard' %}" method="post">
         {% csrf_token %}
